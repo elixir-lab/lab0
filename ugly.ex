@@ -15,43 +15,45 @@ defmodule CouldDoBetter do
   """
 
 
-  @doc """
-  The file `file_name` contains a list of words, one per line.
-  This function scans it and returns a list of anagrams. where each
-  entry in the list is itself a list of words that are anagrams of each 
-  other. So, given the list
 
-      cat
-      dog
-      ferret
-      act
-      reefer
-      tac
-      god
+  def rpn(expr) do
+    tokens = String.split(expr)
+    stack = []
+    execute(tokens, stack)
+  end
 
-  The function will return (in no particular order)
+  def execute(tokens, stack) do
+    if length(tokens) == 0 do
+      stack
+    else
+      { next, tokens } = List.pop_at(tokens, 0)
+      stack = if next in [ "+", "-", "*", "/" ] do
+        { val1, stack } = List.pop_at(stack, 0)
+        { val2, stack } = List.pop_at(stack, 0)
+        
+        if next == "+" do
+                  [ val1+val2 | stack ]
+                else
+                  if next == "-" do
+                    [ val2-val1 | stack ]
+                  else
+                    if next == "*" do
+                      [ val1*val2 | stack ]
+                    else
+                      [ val2/val1 | stack ]
+                    end
+                  end
+                end
+      else
+        val = String.to_integer(next)
+        [ val | stack ]
+      end
 
-    [
-      [ "cat", "act", "tac" ],
-      [ "dog", "god" ]
-    ]
-  """
-
-  def find_anagrams_in(file_name) do
-    content = File.read!(file_name)
-    words = String.split(content, "\n")
-    signatures = Enum.reduce(words, %{}, fn word, sigs ->
-      letters = String.codepoints(word)
-      word_sig = Enum.sort(letters)
-      Map.update(sigs, word_sig, [ word ], fn list -> [ word | list ] end)
-    end)
-    word_groups = Map.values(signatures)
-    anagrams = Enum.filter(word_groups, fn list -> length(list) > 1 end)
-    anagrams
+      execute(tokens, stack)
+    end
   end
   
 end
-
 
 #################### don't change below here ####################
 
@@ -64,24 +66,23 @@ ExUnit.start()
 defmodule UglyTest do
   use ExUnit.Case
 
-  @anagrams CouldDoBetter.find_anagrams_in("words.8800")
+  import CouldDoBetter
 
-  test "count is correct" do
-    assert length(@anagrams) == 355
+  test "numbers are pushed onto the stack" do
+    assert rpn("1 2") == [ 2, 1 ]
   end
 
-  test "there are five sets of anagrams with four words in them" do
-    quads = Enum.filter(@anagrams, fn l -> length(l) > 3 end)
-    assert length(quads) == 5
+  test "addition replaces top two with sum" do
+    assert rpn("1 2 3 +") == [ 5, 1 ]
   end
 
-  test "the longest anagram is conversation/conservation (12 letters)" do
-    longest = @anagrams
-    |> Enum.map(&String.length(hd(&1)))
-    |> Enum.sort_by(&-&1)
-    |> hd
-
-    assert longest == 12
+  test "more complex expression" do
+    assert rpn("1 2 3 * +") == [ 7 ]
   end
 
+  test "and one more" do
+    assert rpn("1 2 3 * + 3 - 1 1 + /") == [ 2 ]
+  end
+
+  
 end
